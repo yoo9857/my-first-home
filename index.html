@@ -116,6 +116,117 @@
         opacity: calc(0.3 + var(--hyp) * 0.7);
       }
 
+      /* ===== 미니 MP3 플레이어 ===== */
+      .player {
+        width: min(300px, calc(100% - 32px)); /* 최대 300px, 좁은 화면에선 양옆 16px 여백 */
+        margin: 20px auto 0;
+        padding: 12px 16px;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        border-radius: 18px;
+        background: rgba(0, 0, 0, 0.45);
+        backdrop-filter: blur(10px); /* 뒤 배경이 흐리게 비치는 유리 느낌 */
+        box-sizing: border-box;
+      }
+
+      /* 곡 제목 줄 */
+      .player-title {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        font-size: 13px;
+        font-weight: bold;
+      }
+
+      /* 재생 중일 때 움직이는 막대 3개 (이퀄라이저) */
+      .eq {
+        display: inline-flex;
+        align-items: flex-end;
+        gap: 2px;
+        height: 12px;
+      }
+      .eq i {
+        width: 3px;
+        height: 30%;
+        background: #ff4f8b;
+        border-radius: 2px;
+      }
+      .player.is-playing .eq i {
+        animation: eq-bounce 0.8s ease-in-out infinite;
+      }
+      .player.is-playing .eq i:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+      .player.is-playing .eq i:nth-child(3) {
+        animation-delay: 0.4s;
+      }
+      @keyframes eq-bounce {
+        0%, 100% { height: 30%; }
+        50% { height: 100%; }
+      }
+
+      /* 진행 막대 + 시간 */
+      .player-progress {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 10px 0 8px;
+        font-size: 11px;
+        font-variant-numeric: tabular-nums; /* 숫자 폭을 같게 → 시간이 바뀌어도 안 흔들림 */
+        color: #ddd;
+      }
+      .player-progress input {
+        flex: 1;
+        accent-color: #ff4f8b; /* 막대 색 */
+        cursor: pointer;
+      }
+
+      /* 버튼 줄 */
+      .player-controls {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+      }
+      .player-controls button {
+        width: 34px;
+        height: 34px;
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        font-size: 14px;
+        line-height: 1;
+        cursor: pointer;
+        transition: background 0.2s, transform 0.2s;
+      }
+      .player-controls button:hover {
+        background: rgba(255, 255, 255, 0.25);
+        transform: scale(1.08);
+      }
+      /* 가운데 재생 버튼은 크고 눈에 띄게 */
+      .player-controls .play-btn {
+        width: 44px;
+        height: 44px;
+        font-size: 16px;
+        border: none;
+        background: #ff4f8b;
+      }
+      .player-controls .play-btn:hover {
+        background: #ff6b9f;
+      }
+      .player-controls button:focus-visible {
+        outline: 2px solid white;
+        outline-offset: 3px;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .player.is-playing .eq i {
+          animation: none;
+          height: 70%;
+        }
+      }
+
       /* ===== 마그네틱 글로우 버튼 ===== */
       /* 빛이 테두리를 따라 돌고, 마우스 쪽으로 살짝 끌려오는 버튼 */
 
@@ -272,6 +383,26 @@
       </div>
     </div>
 
+    <!-- 7. 미니 MP3 플레이어 (audio의 loop → 끝나면 처음부터 반복) -->
+    <audio id="bgm" src="bgm.mp3" loop preload="auto"></audio>
+    <div class="player" id="player">
+      <div class="player-title">
+        <span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span>Contented Game Loop</span>
+      </div>
+      <div class="player-progress">
+        <span id="curTime">0:00</span>
+        <input id="seek" type="range" min="0" max="100" step="0.1" value="0" aria-label="재생 위치" />
+        <span id="durTime">0:00</span>
+      </div>
+      <div class="player-controls">
+        <button id="restartBtn" type="button" aria-label="처음부터">⏮</button>
+        <button id="playBtn" class="play-btn" type="button" aria-label="재생">▶</button>
+        <button id="stopBtn" type="button" aria-label="정지">⏹</button>
+        <button id="muteBtn" type="button" aria-label="음소거" aria-pressed="false">🔊</button>
+      </div>
+    </div>
+
     <!-- a: 링크 (mailto: 를 붙이면 누를 때 메일 쓰기 창이 열려요) -->
     <p><a class="email" href="mailto:hanbin9857@naver.com">hanbin9857@naver.com</a></p>
 
@@ -304,6 +435,91 @@
       // 사용자가 "움직임 줄이기"를 켰는지 확인
       const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       const strength = 12; // 마우스 쪽으로 끌려가는 최대 거리(px)
+
+      // ===== 미니 MP3 플레이어 =====
+      const bgm = document.getElementById("bgm");
+      const player = document.getElementById("player");
+      const playBtn = document.getElementById("playBtn");
+      const stopBtn = document.getElementById("stopBtn");
+      const restartBtn = document.getElementById("restartBtn");
+      const muteBtn = document.getElementById("muteBtn");
+      const seek = document.getElementById("seek");
+      const curTime = document.getElementById("curTime");
+      const durTime = document.getElementById("durTime");
+      bgm.volume = 0.4; // 소리 크기 (0 ~ 1)
+
+      // 초(110.5) → "1:50" 모양으로 바꾸기
+      function formatTime(sec) {
+        if (!isFinite(sec)) return "0:00";
+        const m = Math.floor(sec / 60);
+        const s = Math.floor(sec % 60);
+        return m + ":" + String(s).padStart(2, "0");
+      }
+
+      // 재생/일시정지 버튼 모양을 지금 상태에 맞게
+      function updatePlayBtn() {
+        const playing = !bgm.paused;
+        playBtn.textContent = playing ? "⏸" : "▶";
+        playBtn.setAttribute("aria-label", playing ? "일시정지" : "재생");
+        player.classList.toggle("is-playing", playing); // 이퀄라이저 움직이기
+      }
+      bgm.addEventListener("play", updatePlayBtn);
+      bgm.addEventListener("pause", updatePlayBtn);
+
+      // 곡 길이를 알게 되면 표시
+      bgm.addEventListener("loadedmetadata", () => {
+        durTime.textContent = formatTime(bgm.duration);
+      });
+      // 재생되는 동안 시간과 진행 막대 움직이기
+      bgm.addEventListener("timeupdate", () => {
+        curTime.textContent = formatTime(bgm.currentTime);
+        if (bgm.duration) seek.value = (bgm.currentTime / bgm.duration) * 100;
+      });
+      // 진행 막대를 끌면 그 위치로 이동
+      seek.addEventListener("input", () => {
+        if (bgm.duration) bgm.currentTime = (seek.value / 100) * bgm.duration;
+      });
+
+      // ▶ / ⏸ 재생·일시정지
+      playBtn.addEventListener("click", () => {
+        stopWaitingForTouch(); // 직접 조작했으니 "첫 터치 때 자동 시작"은 취소
+        if (bgm.paused) bgm.play();
+        else bgm.pause();
+      });
+      // ⏹ 정지 (멈추고 처음으로)
+      stopBtn.addEventListener("click", () => {
+        stopWaitingForTouch();
+        bgm.pause();
+        bgm.currentTime = 0;
+      });
+      // ⏮ 처음부터
+      restartBtn.addEventListener("click", () => {
+        stopWaitingForTouch();
+        bgm.currentTime = 0;
+      });
+      // 🔊 / 🔇 음소거
+      muteBtn.addEventListener("click", () => {
+        bgm.muted = !bgm.muted;
+        muteBtn.textContent = bgm.muted ? "🔇" : "🔊";
+        muteBtn.setAttribute("aria-label", bgm.muted ? "음소거 해제" : "음소거");
+        muteBtn.setAttribute("aria-pressed", String(bgm.muted));
+      });
+
+      // 브라우저는 소리 자동재생을 막아요.
+      // 그래서 먼저 재생을 시도하고, 막히면 사용자가 화면을 처음 누를 때 시작해요.
+      function startOnFirstTouch(event) {
+        if (player.contains(event.target)) return; // 플레이어 버튼은 위에서 따로 처리
+        bgm.play().catch(() => {});
+        stopWaitingForTouch();
+      }
+      function stopWaitingForTouch() {
+        document.removeEventListener("pointerdown", startOnFirstTouch);
+        document.removeEventListener("keydown", startOnFirstTouch);
+      }
+      bgm.play().catch(() => {
+        document.addEventListener("pointerdown", startOnFirstTouch);
+        document.addEventListener("keydown", startOnFirstTouch);
+      });
 
       // ===== 홀로그램 프로필 사진 =====
       const holo = document.getElementById("holo");
